@@ -2,7 +2,9 @@
 name = "puttpc_emu"
 version = "0.1.0"
 edition = "2021"
+description = "An emulator for the PuttPc series of Minecraft computers"
 
 [dependencies]
 bitflags = "*"
 num-traits = "*"
+clap = { version = "*", features = ["derive"] }

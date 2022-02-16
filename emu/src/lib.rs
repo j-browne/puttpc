@@ -1,3 +1,5 @@
+use std::fmt::{Binary, Debug, Display, LowerHex, Octal, UpperHex};
+
 pub mod v1;
 pub mod v2;
 pub use v2::*;
@@ -7,7 +9,10 @@ pub trait Machine: IntoIterator {
     type Input;
 
     /// The type of a single unit of output
-    type Output;
+    type Output: Binary + Debug + Display + LowerHex + Octal + UpperHex;
+
+    /// Whether the machine has halted
+    fn is_halted(&self) -> bool;
 
     /// Set the full input of the machine
     fn set_input(&mut self, input: &[Self::Input]);

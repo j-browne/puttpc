@@ -141,6 +141,13 @@ impl PuttPc {
         }
     }
 
+    #[must_use]
+    pub fn with_input(input: &[<Self as Machine>::Input]) -> Self {
+        let mut p = Self::new();
+        p.set_input(input);
+        p
+    }
+
     fn buses(&self) -> (u8, Flags) {
         let mut flags = Flags::empty();
 
@@ -270,6 +277,10 @@ impl Machine for PuttPc {
     type Input = u8;
     type Output = u8;
 
+    fn is_halted(&self) -> bool {
+        self.controls.contains(Controls::HALT)
+    }
+
     fn set_input(&mut self, input: &[Self::Input]) {
         let len = input.len();
         assert!(len <= 16);
@@ -329,7 +340,7 @@ impl Machine for PuttPc {
 
     fn run(&mut self) -> Vec<Self::Output> {
         let mut output = Vec::new();
-        while !self.controls.contains(Controls::HALT) {
+        while !self.is_halted() {
             let out = self.step();
             output.extend(out);
         }
@@ -353,7 +364,7 @@ impl Iterator for IntoIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if self.0.controls.contains(Controls::HALT) {
+            if self.0.is_halted() {
                 break None;
             }
             if let Some(out) = self.0.step() {

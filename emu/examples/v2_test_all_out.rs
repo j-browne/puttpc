@@ -9,7 +9,7 @@ fn main() {
     puttpc.set_input(include_bytes!("v2_test_all_out.bin"));
 
     println!("{:#?}", puttpc);
-    while !puttpc.controls.contains(Controls::HALT) {
+    while !puttpc.is_halted() {
         puttpc.step();
         println!("{:#?}", puttpc);
     }
