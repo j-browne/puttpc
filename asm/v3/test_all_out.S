@@ -1,9 +1,9 @@
 #include "ruledef.S"
 
-    ldav 0
-    ldbv 1
+    mov %a 0
+    mov %b 1
 loop:
     out
-    add
-    jnc loop
+    add %a %b
+    jnc ${loop}
     hlt
