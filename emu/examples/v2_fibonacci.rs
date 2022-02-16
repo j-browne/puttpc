@@ -1,4 +1,4 @@
-use puttpc_emu::{Machine, PuttPc};
+use puttpc_emu::{v2::PuttPc, Machine};
 
 fn main() {
     let puttpc = PuttPc::new();
