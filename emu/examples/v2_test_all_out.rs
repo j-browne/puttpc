@@ -1,7 +1,4 @@
-use puttpc_emu::{
-    v2::{Controls, PuttPc},
-    Machine,
-};
+use puttpc_emu::{v2::PuttPc, Machine};
 
 fn main() {
     let mut puttpc = PuttPc::new();
