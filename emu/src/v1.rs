@@ -1,6 +1,9 @@
+//TODO: flags_in
+
 use crate::Machine;
 use bitflags::bitflags;
 use num_traits::FromPrimitive;
+use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
@@ -63,6 +66,7 @@ impl FromPrimitive for Register {
 
     fn from_u64(n: u64) -> Option<Self> {
         match n {
+            x if x == Register::Counter as u64 => Some(Register::Counter),
             x if x == Register::A as u64 => Some(Register::A),
             x if x == Register::B as u64 => Some(Register::B),
             x if x == Register::Output as u64 => Some(Register::Output),
@@ -304,6 +308,32 @@ impl IntoIterator for PuttPc {
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter(self)
+    }
+}
+
+impl fmt::Display for PuttPc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Registers")?;
+        for (i, v) in self.regs.iter().enumerate() {
+            let reg = Register::from_usize(i).unwrap();
+            writeln!(f, "  {:<11} {v:>3} ({v:08b})", format!("{:?}", reg))?;
+        }
+
+        writeln!(f, "Memory")?;
+        for (i, v) in self.memory.iter().enumerate() {
+            writeln!(f, "  {i:<2} {v:>3} ({v:08b})")?;
+        }
+
+        writeln!(f, "Controls")?;
+        writeln!(f, "  {:?}", self.controls)?;
+
+        writeln!(f, "Flags")?;
+        writeln!(f, "  {:?}", self.flags)?;
+
+        writeln!(f, "Micro")?;
+        writeln!(f, "  {} ({:04b})", self.micro, self.micro)?;
+
+        Ok(())
     }
 }
 

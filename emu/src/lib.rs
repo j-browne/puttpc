@@ -4,7 +4,7 @@ pub mod v1;
 pub mod v2;
 pub use v2::*;
 
-pub trait Machine: IntoIterator {
+pub trait Machine: IntoIterator + Display {
     /// The type of a single unit of input
     type Input;
 

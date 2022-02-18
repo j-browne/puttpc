@@ -1,6 +1,7 @@
 use clap::{ArgEnum, Parser};
-use std::{io, fs, path::PathBuf};
-use puttpc_emu::{Machine, v1, v2};
+use fs_err as fs;
+use puttpc_emu::{v1, v2, Machine};
+use std::{error::Error, io, path::PathBuf};
 
 #[derive(Debug, Parser)]
 #[clap(name = "PuttPc Emulator", about, long_about = None)]
@@ -23,8 +24,6 @@ struct Cli {
 
     /// The input to feed into the computer
     input: PathBuf,
-
-    // TODO: output format
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum)]
@@ -41,19 +40,31 @@ impl Default for Version {
 }
 
 fn main() {
-    let cli = Cli::parse();
-
-    //TODO: fail gracefully
-    let input = fs::read(&cli.input).unwrap();
-
-    match cli.version {
-        Version::V1 => run(v1::PuttPc::with_input(&input), cli),
-        Version::V2 => run(v2::PuttPc::with_input(&input), cli),
-        Version::V3 => todo!(),//run(v3::PuttPc::with_input(&input), cli),
+    if let Err(e) = main_err() {
+        let mut e = &*e;
+        eprintln!("Error: {}", e);
+        while let Some(s) = e.source() {
+            eprintln!("  Cause: {}", s);
+            e = s;
+        }
     }
 }
 
-fn run(mut machine: impl Machine, cli: Cli) {
+fn main_err() -> Result<(), Box<dyn Error>> {
+    let cli = Cli::parse();
+
+    let input = fs::read(&cli.input)?;
+
+    match cli.version {
+        Version::V1 => run(v1::PuttPc::with_input(&input), &cli),
+        Version::V2 => run(v2::PuttPc::with_input(&input), &cli),
+        Version::V3 => todo!(), //run(v3::PuttPc::with_input(&input), &cli),
+    }
+
+    Ok(())
+}
+
+fn run(mut machine: impl Machine, cli: &Cli) {
     // a buffer for stdin.read_line. data isn't used
     let mut s = String::new();
 
@@ -61,7 +72,7 @@ fn run(mut machine: impl Machine, cli: Cli) {
         let out = machine.step();
 
         if cli.state {
-            todo!("print state");
+            println!("{}", machine);
         }
 
         if let Some(out) = out {
@@ -72,7 +83,6 @@ fn run(mut machine: impl Machine, cli: Cli) {
 
         if cli.pause {
             println!("Press Enter to continue");
-            // TODO: do this better
             io::stdin().read_line(&mut s).unwrap();
         }
     }

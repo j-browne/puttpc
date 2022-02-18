@@ -8,3 +8,4 @@ description = "An emulator for the PuttPc series of Minecraft computers"
 bitflags = "*"
 num-traits = "*"
 clap = { version = "*", features = ["derive"] }
+fs-err = "*"
