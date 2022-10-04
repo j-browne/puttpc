@@ -2,6 +2,7 @@ use std::fmt::{Binary, Debug, Display, LowerHex, Octal, UpperHex};
 
 pub mod v1;
 pub mod v2;
+pub mod v3;
 pub use v2::*;
 
 pub trait Machine: IntoIterator + Display {

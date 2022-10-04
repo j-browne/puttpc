@@ -3,16 +3,17 @@
 
 #ruledef
 {
-    mov %a         %b         => 0x00
-    mov %a         {value}    => 0x01 @ value`8
-    mov %a         ${address} => 0x02 @ address`8
-    mov %b         %a         => 0x03
-    mov %b         {value}    => 0x04 @ value`8
-    mov %b         ${address} => 0x05 @ address`8
-    mov ${address} %a         => 0x06 @ address`8
-    mov ${address} %b         => 0x07 @ address`8
-    mov ${address} {value}    => 0x08 @ address`8 @ value`8
-    mov ${address} ${address} => 0x09 @ address`8 @ address`8
+    nop                       => 0x00
+    mov %a         %b         => 0x01
+    mov %a         {value}    => 0x02 @ value`8
+    mov %a         ${address} => 0x03 @ address`8
+    mov %b         %a         => 0x04
+    mov %b         {value}    => 0x05 @ value`8
+    mov %b         ${address} => 0x06 @ address`8
+    mov ${address} %a         => 0x07 @ address`8
+    mov ${address} %b         => 0x08 @ address`8
+    mov ${address} {value}    => 0x09 @ address`8 @ value`8
+    mov ${address} ${address} => 0x0a @ address`8 @ address`8
     add %a         %b         => 0x10
     add %a         {value}    => 0x11 @ value`8
     add %a         ${address} => 0x12 @ address`8

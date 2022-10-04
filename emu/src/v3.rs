@@ -1,5 +1,3 @@
-//TODO: flags_in should be set later, maybe?
-
 use crate::Machine;
 use bitflags::bitflags;
 use derive_try_from_primitive::TryFromPrimitive;
@@ -13,18 +11,42 @@ use Register as R;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromPrimitive)]
 #[repr(u8)]
 pub enum Instruction {
-    Nop = 0x0,
-    Ldav = 0x1,
-    Ldam = 0x2,
-    Sta = 0x3,
-    Txb = 0x4,
-    Add = 0x5,
-    Sub = 0x6,
-    Jmp = 0x7,
-    Jz = 0x8,
-    Jc = 0x9,
-    Out = 0xE,
-    Hlt = 0xF,
+    Nop = 0x00,
+    MovAB = 0x01,
+    MovAV = 0x02,
+    MovAM = 0x03,
+    MovBA = 0x04,
+    MovBV = 0x05,
+    MovBM = 0x06,
+    MovMA = 0x07,
+    MovMB = 0x08,
+    MovMV = 0x09,
+    MovMM = 0x0a,
+    AddAB = 0x10,
+    AddAV = 0x11,
+    AddAM = 0x12,
+    AddVB = 0x13,
+    AddVV = 0x14,
+    AddVM = 0x15,
+    AddMB = 0x16,
+    AddMV = 0x17,
+    AddMM = 0x18,
+    SubAB = 0x20,
+    SubAV = 0x21,
+    SubAM = 0x22,
+    SubVB = 0x23,
+    SubVV = 0x24,
+    SubVM = 0x25,
+    SubMB = 0x26,
+    SubMV = 0x27,
+    SubMM = 0x28,
+    Jmp = 0xD0,
+    Jz = 0xD1,
+    Jnz = 0xD2,
+    Jc = 0xD3,
+    Jnc = 0xD4,
+    Out = 0xE0,
+    Hlt = 0xFF,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromPrimitive)]
@@ -63,6 +85,7 @@ bitflags! {
         const JUMP_IF_ZERO = 0b0000_1000_0000_0000_0000_0000;
         const JUMP_IF_CARRY = 0b0001_0000_0000_0000_0000_0000;
         const FLAGS_IN = 0b0010_0000_0000_0000_0000_0000;
+        const RESET_MICRO = 0b0100_0000_0000_0000_0000_0000;
     }
 }
 
@@ -77,7 +100,7 @@ bitflags! {
 #[derive(Debug)]
 pub struct PuttPc {
     pub regs: [u8; 6],
-    pub memory: [u8; 16],
+    pub memory: [u8; 256],
     pub controls: Controls,
     pub flags_in: Flags,
     pub flags: Flags,
@@ -89,7 +112,7 @@ impl PuttPc {
     pub fn new() -> Self {
         PuttPc {
             regs: [0; 6],
-            memory: [0; 16],
+            memory: [0; 256],
             controls: C::COUNTER_OUT | C::RAM_ADDR_IN,
             flags_in: F::ZERO,
             flags: F::empty(),
@@ -152,30 +175,47 @@ impl PuttPc {
         flags_in
     }
 
-    #[allow(clippy::match_same_arms)]
     fn controls_bus(&self) -> Controls {
-        let instr = I::try_from(self.regs[R::Instruction as usize] >> 4)
-            .expect("a u8 right shifted 4 is a valid instruction");
+        let instr = I::try_from(self.regs[R::Instruction as usize]).unwrap();
         match (instr, self.micro) {
             (_, 0) => C::COUNTER_OUT | C::RAM_ADDR_IN,
             (_, 1) => C::COUNTER_INCREMENT | C::RAM_OUT | C::INSTRUCTION_IN,
-            (I::Ldav, 2) => C::INSTRUCTION_OUT | C::A_IN,
-            (I::Ldam, 2) => C::INSTRUCTION_OUT | C::RAM_ADDR_IN,
-            (I::Ldam, 3) => C::RAM_OUT | C::A_IN,
-            (I::Sta, 2) => C::INSTRUCTION_OUT | C::RAM_ADDR_IN,
-            (I::Sta, 3) => C::A_OUT | C::RAM_IN,
-            (I::Txb, 2) => C::A_OUT | C::B_IN,
-            (I::Add, 2) => C::INSTRUCTION_OUT | C::RAM_ADDR_IN,
-            (I::Add, 3) => C::RAM_OUT | C::B_IN,
-            (I::Add, 4) => C::ADDER_OUT | C::A_IN | C::FLAGS_IN,
-            (I::Sub, 2) => C::INSTRUCTION_OUT | C::RAM_ADDR_IN | C::SUBTRACT,
-            (I::Sub, 3) => C::RAM_OUT | C::B_IN | C::SUBTRACT,
-            (I::Sub, 4) => C::ADDER_OUT | C::A_IN | C::FLAGS_IN | C::SUBTRACT,
-            (I::Jmp, 2) => C::INSTRUCTION_OUT | C::JUMP,
-            (I::Jz, 2) => C::INSTRUCTION_OUT | C::JUMP_IF_ZERO,
-            (I::Jc, 2) => C::INSTRUCTION_OUT | C::JUMP_IF_CARRY,
-            (I::Out, 2) => C::A_OUT | C::OUTPUT_IN,
-            (I::Hlt, 2) => C::HALT,
+            (I::Nop, 2) => C::RESET_MICRO,
+            (I::MovAB, _) => todo!(),
+            (I::MovAV, _) => todo!(),
+            (I::MovAM, _) => todo!(),
+            (I::MovBA, _) => todo!(),
+            (I::MovBV, _) => todo!(),
+            (I::MovBM, _) => todo!(),
+            (I::MovMA, _) => todo!(),
+            (I::MovMB, _) => todo!(),
+            (I::MovMV, _) => todo!(),
+            (I::MovMM, _) => todo!(),
+            (I::AddAB, _) => todo!(),
+            (I::AddAV, _) => todo!(),
+            (I::AddAM, _) => todo!(),
+            (I::AddVB, _) => todo!(),
+            (I::AddVV, _) => todo!(),
+            (I::AddVM, _) => todo!(),
+            (I::AddMB, _) => todo!(),
+            (I::AddMV, _) => todo!(),
+            (I::AddMM, _) => todo!(),
+            (I::SubAB, _) => todo!(),
+            (I::SubAV, _) => todo!(),
+            (I::SubAM, _) => todo!(),
+            (I::SubVB, _) => todo!(),
+            (I::SubVV, _) => todo!(),
+            (I::SubVM, _) => todo!(),
+            (I::SubMB, _) => todo!(),
+            (I::SubMV, _) => todo!(),
+            (I::SubMM, _) => todo!(),
+            (I::Jmp, _) => todo!(),
+            (I::Jz, _) => todo!(),
+            (I::Jnz, _) => todo!(),
+            (I::Jc, _) => todo!(),
+            (I::Jnc, _) => todo!(),
+            (I::Out, 2) => C::A_OUT | C::OUTPUT_IN | C::RESET_MICRO,
+            (I::Hlt, 2) => C::HALT | C::RESET_MICRO,
             (_, _) => C::empty(),
         }
     }
@@ -191,15 +231,15 @@ impl Machine for PuttPc {
     type Input = u8;
     type Output = u8;
 
+    fn is_halted(&self) -> bool {
+        self.controls.contains(C::HALT)
+    }
+
     fn set_input(&mut self, input: &[Self::Input]) {
         let len = input.len();
         assert!(len <= 16);
         let memory = &mut self.memory[..len];
         memory.copy_from_slice(input);
-    }
-
-    fn is_halted(&self) -> bool {
-        self.controls.contains(C::HALT)
     }
 
     fn step(&mut self) -> Option<Self::Output> {
@@ -245,7 +285,7 @@ impl Machine for PuttPc {
         self.controls = self.controls_bus();
 
         self.micro += 1;
-        if self.micro > 4 {
+        if self.controls.contains(C::RESET_MICRO) || self.micro > 4 {
             self.micro = 0;
         }
 
@@ -289,8 +329,7 @@ impl fmt::Display for PuttPc {
         writeln!(f, "  {:?}", self.controls)?;
 
         writeln!(f, "Flags")?;
-        writeln!(f, "  In  {:?}", self.flags_in)?;
-        writeln!(f, "  Out {:?}", self.flags)?;
+        writeln!(f, "  {:?}", self.flags)?;
 
         writeln!(f, "Micro")?;
         writeln!(f, "  {} ({:04b})", self.micro, self.micro)?;

@@ -6,6 +6,6 @@ description = "An emulator for the PuttPc series of Minecraft computers"
 
 [dependencies]
 bitflags = "*"
-num-traits = "*"
+derive-try-from-primitive = "*"
 clap = { version = "*", features = ["derive"] }
 fs-err = "*"

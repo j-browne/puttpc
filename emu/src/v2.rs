@@ -1,59 +1,35 @@
 use crate::Machine;
 use bitflags::bitflags;
-use num_traits::FromPrimitive;
-use std::fmt;
+use derive_try_from_primitive::TryFromPrimitive;
+use std::{convert::TryFrom, fmt};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+use Controls as C;
+use Flags as F;
+use Instruction as I;
+use Register as R;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromPrimitive)]
 #[repr(u8)]
 pub enum Instruction {
-    Nop,
-    Ldav,
-    Ldam,
-    Sta,
-    Txb,
-    Add,
-    Addv,
-    Addm,
-    Sub,
-    Subv,
-    Subm,
-    Jmp,
-    Jz,
-    Jc,
-    Out,
-    Hlt,
+    Nop = 0x0,
+    Ldav = 0x1,
+    Ldam = 0x2,
+    Sta = 0x3,
+    Txb = 0x4,
+    Add = 0x5,
+    Addv = 0x6,
+    Addm = 0x7,
+    Sub = 0x8,
+    Subv = 0x9,
+    Subm = 0xA,
+    Jmp = 0xB,
+    Jz = 0xC,
+    Jc = 0xD,
+    Out = 0xE,
+    Hlt = 0xF,
 }
 
-impl FromPrimitive for Instruction {
-    #[allow(clippy::cast_sign_loss)]
-    fn from_i64(n: i64) -> Option<Self> {
-        Self::from_u64(n as u64)
-    }
-
-    fn from_u64(n: u64) -> Option<Self> {
-        match n {
-            x if x == Instruction::Nop as u64 => Some(Instruction::Nop),
-            x if x == Instruction::Ldav as u64 => Some(Instruction::Ldav),
-            x if x == Instruction::Ldam as u64 => Some(Instruction::Ldam),
-            x if x == Instruction::Sta as u64 => Some(Instruction::Sta),
-            x if x == Instruction::Txb as u64 => Some(Instruction::Txb),
-            x if x == Instruction::Add as u64 => Some(Instruction::Add),
-            x if x == Instruction::Addv as u64 => Some(Instruction::Addv),
-            x if x == Instruction::Addm as u64 => Some(Instruction::Addm),
-            x if x == Instruction::Sub as u64 => Some(Instruction::Sub),
-            x if x == Instruction::Subv as u64 => Some(Instruction::Subv),
-            x if x == Instruction::Subm as u64 => Some(Instruction::Subm),
-            x if x == Instruction::Jmp as u64 => Some(Instruction::Jmp),
-            x if x == Instruction::Jz as u64 => Some(Instruction::Jz),
-            x if x == Instruction::Jc as u64 => Some(Instruction::Jc),
-            x if x == Instruction::Out as u64 => Some(Instruction::Out),
-            x if x == Instruction::Hlt as u64 => Some(Instruction::Hlt),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, TryFromPrimitive)]
 #[repr(u8)]
 pub enum Register {
     Counter,
@@ -62,25 +38,6 @@ pub enum Register {
     Output,
     RamAddress,
     Instruction,
-}
-
-impl FromPrimitive for Register {
-    #[allow(clippy::cast_sign_loss)]
-    fn from_i64(n: i64) -> Option<Self> {
-        Self::from_u64(n as u64)
-    }
-
-    fn from_u64(n: u64) -> Option<Self> {
-        match n {
-            x if x == Register::Counter as u64 => Some(Register::Counter),
-            x if x == Register::A as u64 => Some(Register::A),
-            x if x == Register::B as u64 => Some(Register::B),
-            x if x == Register::Output as u64 => Some(Register::Output),
-            x if x == Register::RamAddress as u64 => Some(Register::RamAddress),
-            x if x == Register::Instruction as u64 => Some(Register::Instruction),
-            _ => None,
-        }
-    }
 }
 
 bitflags! {
@@ -136,9 +93,9 @@ impl PuttPc {
         PuttPc {
             regs: [0; 6],
             memory: [0; 16],
-            controls: Controls::COUNTER_OUT | Controls::RAM_ADDR_IN,
-            flags_in: Flags::ZERO,
-            flags: Flags::empty(),
+            controls: C::COUNTER_OUT | C::RAM_ADDR_IN,
+            flags_in: F::ZERO,
+            flags: F::empty(),
             micro: 0,
         }
     }
@@ -150,121 +107,86 @@ impl PuttPc {
         p
     }
 
-    fn buses(&self) -> (u8, Flags) {
-        let mut flags = Flags::empty();
-
-        let x = if self.controls.contains(Controls::COUNTER_OUT) {
-            self.regs[Register::Counter as usize]
-        } else {
-            0
-        } | if self.controls.contains(Controls::A_OUT) {
-            self.regs[Register::A as usize]
-        } else {
-            0
-        } | if self.controls.contains(Controls::B_OUT) {
-            self.regs[Register::B as usize]
-        } else {
-            0
-        } | if self.controls.contains(Controls::INSTRUCTION_OUT) {
-            self.regs[Register::Instruction as usize] & 0xF
-        } else {
-            0
-        } | if self.controls.contains(Controls::RAM_OUT) {
-            self.memory[self.regs[Register::RamAddress as usize] as usize]
-        } else {
-            0
-        } | if self.controls.contains(Controls::ADDER_OUT) {
-            let (res, ov) = if self.controls.contains(Controls::SUBTRACT) {
-                self.regs[Register::A as usize].overflowing_sub(self.regs[Register::B as usize])
+    fn data_bus(&self) -> u8 {
+        let mut data = 0;
+        if self.controls.contains(C::COUNTER_OUT) {
+            data |= self.regs[R::Counter as usize];
+        }
+        if self.controls.contains(C::A_OUT) {
+            data |= self.regs[R::A as usize];
+        }
+        if self.controls.contains(C::B_OUT) {
+            data |= self.regs[R::B as usize];
+        }
+        if self.controls.contains(C::INSTRUCTION_OUT) {
+            data |= self.regs[R::Instruction as usize] & 0xF;
+        }
+        if self.controls.contains(C::RAM_OUT) {
+            data |= self.memory[self.regs[R::RamAddress as usize] as usize];
+        }
+        if self.controls.contains(C::ADDER_OUT) {
+            let (adder_sum, _) = if self.controls.contains(C::SUBTRACT) {
+                self.regs[R::A as usize].overflowing_sub(self.regs[R::B as usize])
             } else {
-                self.regs[Register::A as usize].overflowing_add(self.regs[Register::B as usize])
+                self.regs[R::A as usize].overflowing_add(self.regs[R::B as usize])
             };
 
-            if res == 0 {
-                flags |= Flags::ZERO;
-            }
-            if ov {
-                flags |= Flags::CARRY;
-            }
-
-            res
-        } else {
-            0
+            data |= adder_sum;
         };
 
-        (x, flags)
+        data
+    }
+
+    fn flags_in_bus(&self) -> Flags {
+        let (adder_sum, adder_overflow) = if self.controls.contains(C::SUBTRACT) {
+            self.regs[R::A as usize].overflowing_sub(self.regs[R::B as usize])
+        } else {
+            self.regs[R::A as usize].overflowing_add(self.regs[R::B as usize])
+        };
+
+        let mut flags_in = F::empty();
+        if adder_sum == 0 {
+            flags_in |= F::ZERO;
+        }
+        if adder_overflow {
+            flags_in |= F::CARRY;
+        }
+
+        flags_in
     }
 
     #[allow(clippy::match_same_arms)]
-    fn controls(&self) -> Controls {
-        let instr = Instruction::from_u8(self.regs[Register::Instruction as usize] >> 4)
+    fn controls_bus(&self) -> Controls {
+        let instr = I::try_from(self.regs[R::Instruction as usize] >> 4)
             .expect("a u8 right shifted 4 is a valid instruction");
         match (instr, self.micro) {
-            (_, 0) => Controls::COUNTER_OUT | Controls::RAM_ADDR_IN,
-            (_, 1) => Controls::COUNTER_INCREMENT | Controls::RAM_OUT | Controls::INSTRUCTION_IN,
-            (Instruction::Nop, 2) => Controls::RESET_MICRO,
-            (Instruction::Ldav, 2) => {
-                Controls::INSTRUCTION_OUT | Controls::A_IN | Controls::RESET_MICRO
-            }
-            (Instruction::Ldam, 2) => Controls::INSTRUCTION_OUT | Controls::RAM_ADDR_IN,
-            (Instruction::Ldam, 3) => Controls::RAM_OUT | Controls::A_IN | Controls::RESET_MICRO,
-            (Instruction::Sta, 2) => Controls::INSTRUCTION_OUT | Controls::RAM_ADDR_IN,
-            (Instruction::Sta, 3) => Controls::A_OUT | Controls::RAM_IN | Controls::RESET_MICRO,
-            (Instruction::Txb, 2) => Controls::A_OUT | Controls::B_IN | Controls::RESET_MICRO,
-            (Instruction::Add, 2) => {
-                Controls::ADDER_OUT | Controls::A_IN | Controls::FLAGS_IN | Controls::RESET_MICRO
-            }
-            (Instruction::Addv, 2) => Controls::INSTRUCTION_OUT | Controls::B_IN,
-            (Instruction::Addv, 3) => {
-                Controls::ADDER_OUT | Controls::A_IN | Controls::FLAGS_IN | Controls::RESET_MICRO
-            }
-            (Instruction::Addm, 2) => Controls::INSTRUCTION_OUT | Controls::RAM_ADDR_IN,
-            (Instruction::Addm, 3) => Controls::RAM_OUT | Controls::B_IN | Controls::RESET_MICRO,
-            (Instruction::Addm, 4) => {
-                Controls::ADDER_OUT | Controls::A_IN | Controls::FLAGS_IN | Controls::RESET_MICRO
-            }
-            (Instruction::Sub, 2) => {
-                Controls::ADDER_OUT
-                    | Controls::A_IN
-                    | Controls::FLAGS_IN
-                    | Controls::RESET_MICRO
-                    | Controls::SUBTRACT
-            }
-            (Instruction::Subv, 2) => {
-                Controls::INSTRUCTION_OUT | Controls::B_IN | Controls::SUBTRACT
-            }
-            (Instruction::Subv, 3) => {
-                Controls::ADDER_OUT
-                    | Controls::A_IN
-                    | Controls::FLAGS_IN
-                    | Controls::RESET_MICRO
-                    | Controls::SUBTRACT
-            }
-            (Instruction::Subm, 2) => {
-                Controls::INSTRUCTION_OUT | Controls::RAM_ADDR_IN | Controls::SUBTRACT
-            }
-            (Instruction::Subm, 3) => {
-                Controls::RAM_OUT | Controls::B_IN | Controls::RESET_MICRO | Controls::SUBTRACT
-            }
-            (Instruction::Subm, 4) => {
-                Controls::ADDER_OUT
-                    | Controls::A_IN
-                    | Controls::FLAGS_IN
-                    | Controls::RESET_MICRO
-                    | Controls::SUBTRACT
-            }
-            (Instruction::Jmp, 2) => {
-                Controls::INSTRUCTION_OUT | Controls::JUMP | Controls::RESET_MICRO
-            }
-            (Instruction::Jz, 2) => {
-                Controls::INSTRUCTION_OUT | Controls::JUMP_IF_ZERO | Controls::RESET_MICRO
-            }
-            (Instruction::Jc, 2) => {
-                Controls::INSTRUCTION_OUT | Controls::JUMP_IF_CARRY | Controls::RESET_MICRO
-            }
-            (Instruction::Out, 2) => Controls::A_OUT | Controls::OUTPUT_IN | Controls::RESET_MICRO,
-            (Instruction::Hlt, 2) => Controls::HALT | Controls::RESET_MICRO,
-            (_, _) => Controls::empty(),
+            (_, 0) => C::COUNTER_OUT | C::RAM_ADDR_IN,
+            (_, 1) => C::COUNTER_INCREMENT | C::RAM_OUT | C::INSTRUCTION_IN,
+            (I::Nop, 2) => C::RESET_MICRO,
+            (I::Ldav, 2) => C::INSTRUCTION_OUT | C::A_IN | C::RESET_MICRO,
+            (I::Ldam, 2) => C::INSTRUCTION_OUT | C::RAM_ADDR_IN,
+            (I::Ldam, 3) => C::RAM_OUT | C::A_IN | C::RESET_MICRO,
+            (I::Sta, 2) => C::INSTRUCTION_OUT | C::RAM_ADDR_IN,
+            (I::Sta, 3) => C::A_OUT | C::RAM_IN | C::RESET_MICRO,
+            (I::Txb, 2) => C::A_OUT | C::B_IN | C::RESET_MICRO,
+            (I::Add, 2) => C::ADDER_OUT | C::A_IN | C::FLAGS_IN | C::RESET_MICRO,
+            (I::Addv, 2) => C::INSTRUCTION_OUT | C::B_IN,
+            (I::Addv, 3) => C::ADDER_OUT | C::A_IN | C::FLAGS_IN | C::RESET_MICRO,
+            (I::Addm, 2) => C::INSTRUCTION_OUT | C::RAM_ADDR_IN,
+            (I::Addm, 3) => C::RAM_OUT | C::B_IN | C::RESET_MICRO,
+            (I::Addm, 4) => C::ADDER_OUT | C::A_IN | C::FLAGS_IN | C::RESET_MICRO,
+            (I::Sub, 2) => C::ADDER_OUT | C::A_IN | C::FLAGS_IN | C::RESET_MICRO | C::SUBTRACT,
+            (I::Subv, 2) => C::INSTRUCTION_OUT | C::B_IN | C::SUBTRACT,
+            (I::Subv, 3) => C::ADDER_OUT | C::A_IN | C::FLAGS_IN | C::RESET_MICRO | C::SUBTRACT,
+            (I::Subm, 2) => C::INSTRUCTION_OUT | C::RAM_ADDR_IN | C::SUBTRACT,
+            (I::Subm, 3) => C::RAM_OUT | C::B_IN | C::RESET_MICRO | C::SUBTRACT,
+            (I::Subm, 4) => C::ADDER_OUT | C::A_IN | C::FLAGS_IN | C::RESET_MICRO | C::SUBTRACT,
+            (I::Jmp, 2) => C::INSTRUCTION_OUT | C::JUMP | C::RESET_MICRO,
+            (I::Jz, 2) => C::INSTRUCTION_OUT | C::JUMP_IF_ZERO | C::RESET_MICRO,
+            (I::Jc, 2) => C::INSTRUCTION_OUT | C::JUMP_IF_CARRY | C::RESET_MICRO,
+            (I::Out, 2) => C::A_OUT | C::OUTPUT_IN | C::RESET_MICRO,
+            (I::Hlt, 2) => C::HALT | C::RESET_MICRO,
+            (_, _) => C::empty(),
         }
     }
 }
@@ -280,7 +202,7 @@ impl Machine for PuttPc {
     type Output = u8;
 
     fn is_halted(&self) -> bool {
-        self.controls.contains(Controls::HALT)
+        self.controls.contains(C::HALT)
     }
 
     fn set_input(&mut self, input: &[Self::Input]) {
@@ -292,48 +214,48 @@ impl Machine for PuttPc {
 
     fn step(&mut self) -> Option<Self::Output> {
         let mut out = None;
-        let (data, flags) = self.buses();
+        let data = self.data_bus();
 
-        if self.controls.contains(Controls::RAM_ADDR_IN) {
-            self.regs[Register::RamAddress as usize] = data;
+        if self.controls.contains(C::RAM_ADDR_IN) {
+            self.regs[R::RamAddress as usize] = data;
         }
-        if self.controls.contains(Controls::OUTPUT_IN) {
-            self.regs[Register::Output as usize] = data;
+        if self.controls.contains(C::OUTPUT_IN) {
+            self.regs[R::Output as usize] = data;
             out = Some(data);
         }
-        if self.controls.contains(Controls::A_IN) {
-            self.regs[Register::A as usize] = data;
+        if self.controls.contains(C::A_IN) {
+            self.regs[R::A as usize] = data;
         }
-        if self.controls.contains(Controls::B_IN) {
-            self.regs[Register::B as usize] = data;
+        if self.controls.contains(C::B_IN) {
+            self.regs[R::B as usize] = data;
         }
-        if self.controls.contains(Controls::INSTRUCTION_IN) {
-            self.regs[Register::Instruction as usize] = data;
+        if self.controls.contains(C::INSTRUCTION_IN) {
+            self.regs[R::Instruction as usize] = data;
         }
-        if self.controls.contains(Controls::RAM_IN) {
-            self.memory[self.regs[Register::RamAddress as usize] as usize] = data;
+        if self.controls.contains(C::RAM_IN) {
+            self.memory[self.regs[R::RamAddress as usize] as usize] = data;
         }
 
-        self.flags_in = flags;
-        if self.controls.contains(Controls::FLAGS_IN) {
+        // Set the flags register and then calculate the NEXT step's flags_in
+        if self.controls.contains(C::FLAGS_IN) {
             self.flags = self.flags_in;
         }
+        self.flags_in = self.flags_in_bus();
 
-        if self.controls.contains(Controls::JUMP)
-            || (self.controls.contains(Controls::JUMP_IF_ZERO) && self.flags.contains(Flags::ZERO))
-            || (self.controls.contains(Controls::JUMP_IF_CARRY)
-                && self.flags.contains(Flags::CARRY))
+        if self.controls.contains(C::JUMP)
+            || (self.controls.contains(C::JUMP_IF_ZERO) && self.flags.contains(F::ZERO))
+            || (self.controls.contains(C::JUMP_IF_CARRY) && self.flags.contains(F::CARRY))
         {
-            self.regs[Register::Counter as usize] = data & 0xF;
+            self.regs[R::Counter as usize] = data & 0xF;
         }
-        if self.controls.contains(Controls::COUNTER_INCREMENT) {
-            self.regs[Register::Counter as usize] += 1;
+        if self.controls.contains(C::COUNTER_INCREMENT) {
+            self.regs[R::Counter as usize] += 1;
         }
 
-        self.controls = self.controls();
+        self.controls = self.controls_bus();
 
         self.micro += 1;
-        if self.controls.contains(Controls::RESET_MICRO) || self.micro > 4 {
+        if self.controls.contains(C::RESET_MICRO) || self.micro > 4 {
             self.micro = 0;
         }
 
@@ -363,7 +285,8 @@ impl fmt::Display for PuttPc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Registers")?;
         for (i, v) in self.regs.iter().enumerate() {
-            let reg = Register::from_usize(i).unwrap();
+            let reg = u8::try_from(i).unwrap();
+            let reg = R::try_from(reg).unwrap();
             writeln!(f, "  {:<11} {v:>3} ({v:08b})", format!("{:?}", reg))?;
         }
 
@@ -376,7 +299,8 @@ impl fmt::Display for PuttPc {
         writeln!(f, "  {:?}", self.controls)?;
 
         writeln!(f, "Flags")?;
-        writeln!(f, "  {:?}", self.flags)?;
+        writeln!(f, "  In  {:?}", self.flags_in)?;
+        writeln!(f, "  Out {:?}", self.flags)?;
 
         writeln!(f, "Micro")?;
         writeln!(f, "  {} ({:04b})", self.micro, self.micro)?;
